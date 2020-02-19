@@ -422,6 +422,8 @@
     <Compile Include="src\Builder\FieldConditionBuilder.cs" />
     <Compile Include="src\Models\SigningTheme.cs" />
     <Compile Include="src\Services\SigningStyleService.cs" />
+    <Compile Include="src\ApiToken.cs" />
+    <Compile Include="src\ApiTokenConfig.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSHARP.Targets" />
   <ProjectExtensions>
