@@ -2,6 +2,7 @@ using System;
 using Silanis.ESL.SDK;
 using System.IO;
 using Silanis.ESL.SDK.Internal;
+using System.Collections.Generic;
 
 namespace SDK.Examples
 {
@@ -23,7 +24,16 @@ namespace SDK.Examples
 
         public SDKSample()
         {
-            eslClient = new EslClient(props.Get( "api.key" ), props.Get( "api.url" ), props.Get( "webpage.url" ), true);
+            if (props.Exists("api.clientId")) { 
+                ApiTokenConfig apiTokenConfig = new ApiTokenConfig();
+                apiTokenConfig.BaseUrl = props.Get( "webpage.url" );
+                apiTokenConfig.ClientAppId = props.Get("api.clientId");
+                apiTokenConfig.ClientAppSecret = props.Get("api.secret");
+                apiTokenConfig.TokenType = ApiTokenType.OWNER;
+                eslClient = new EslClient(apiTokenConfig, props.Get( "api.url" ), true, null, new Dictionary<string,string>());
+            } else {
+                eslClient = new EslClient(props.Get( "api.key" ), props.Get( "api.url" ), props.Get( "webpage.url" ), true);
+            }
             SetProperties();
         }
 

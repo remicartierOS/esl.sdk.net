@@ -35,13 +35,14 @@ namespace Silanis.ESL.SDK.Internal
         public static ApiTokenConfig apiTokenConfig { set; get; }
         private static ApiToken apiToken = null;
 
-		private static void setupAuthorization(HttpWebRequest request, string apiKey) {
+		private static void setupAuthorization(WebRequest request, string apiKey) {
             if (apiTokenConfig != null) {
                 //Do we have an api token and is it still valid for at least a minute ?
-                long milliseconds = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+                TimeSpan timeSpan = DateTime.UtcNow - new DateTime(1970, 1, 1);
+                long milliseconds = (long)timeSpan.TotalMilliseconds;
                 if (apiToken == null || milliseconds > apiToken.ExpiresAt - 60 * 1000) {
                     //We need to fetch a new access token using the clientAppId/Secret
-                    string jsonPayload = String.Format("{\"clientid\":\"{0}\",\"secret\":\"{1}\",\"type\":\"{2}\"", apiTokenConfig.ClientAppId, apiTokenConfig.ClientAppSecret, apiTokenConfig.TokenType.ToString());
+                    string jsonPayload = String.Format("{{\"clientId\":\"{0}\",\"secret\":\"{1}\",\"type\":\"{2}\"", apiTokenConfig.ClientAppId, apiTokenConfig.ClientAppSecret, apiTokenConfig.TokenType.ToString());
                     if (apiTokenConfig.TokenType == ApiTokenType.SENDER) {
                         jsonPayload += String.Format("\"email\":\"{0}\"", apiTokenConfig.SenderEmail);
                     }
@@ -52,6 +53,7 @@ namespace Silanis.ESL.SDK.Internal
                     apiTokenRequest.ContentType = ESL_CONTENT_TYPE_APPLICATION_JSON;
                     apiTokenRequest.ContentLength = jsonPayloadBytes.Length;
                     apiTokenRequest.Accept = ESL_ACCEPT_TYPE_APPLICATION_JSON;
+                    apiTokenRequest.Timeout = 30000; //30 seconds
                     SetProxy(apiTokenRequest);
 
                     using (Stream dataStream = apiTokenRequest.GetRequestStream())
@@ -65,7 +67,7 @@ namespace Silanis.ESL.SDK.Internal
                         throw new EslException("Unable to fetch access token for "+apiTokenConfig.ToString()+", response was "+httpResponse.ToString(), null);
                     }
 
-                    string result = null;
+                    string result;
                     using (var streamReader = new StreamReader(httpResponse.GetResponseStream()))
                     {
                         result = streamReader.ReadToEnd();
@@ -140,7 +142,7 @@ namespace Silanis.ESL.SDK.Internal
                 request.ContentType = ESL_CONTENT_TYPE_APPLICATION_JSON;
                 request.ContentLength = content.Length;
                 AddAdditionalHeaders (request, headers);
-                AddAuthorizationHeader (request, authHeaderGen);
+                setupAuthorization(request, authHeaderGen.Value);
                 request.Accept = ESL_ACCEPT_TYPE_APPLICATION_JSON;
                 SetProxy (request);
 
@@ -532,12 +534,7 @@ namespace Silanis.ESL.SDK.Internal
                 request.Headers.Add (entry.Key, entry.Value);
             }
         }
-
-		public static void AddAuthorizationHeader(WebRequest request, AuthHeaderGenerator authHeaderGen)
-		{
-			request.Headers.Add(authHeaderGen.Name, authHeaderGen.Value);
-		}
-
+        
         public static string MultipartPostHttp (string apiKey, string path, byte[] content, string boundary, AuthHeaderGenerator authHeaderGen)
         {
             return MultipartPostHttp (apiKey, path, content, boundary, authHeaderGen, new Dictionary<string, string> ());
@@ -552,8 +549,9 @@ namespace Silanis.ESL.SDK.Internal
                 request.Method = "POST";
                 request.ContentType = string.Format (ESL_CONTENT_TYPE_APPLICATION_MULTIPART, boundary);
                 request.ContentLength = content.Length;
+                request.Timeout = 30000; //30 secs
                 AddAdditionalHeaders (request, headers);
-                AddAuthorizationHeader (request, authHeaderGen);
+                setupAuthorization(request, apiKey);
                 SetProxy (request);
 
                 using (Stream dataStream = request.GetRequestStream ()) {
